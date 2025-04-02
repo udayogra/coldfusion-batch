@@ -4,14 +4,15 @@
 This is a powerful and extensible **batch processing framework for ColdFusion**, inspired by Spring Batch. It allows users to process large data efficiently in chunks, with built-in support for retries, throttling, parallel execution, scheduling, and persistence.
 
 ## Features
-- **Reader/Processor/Writer model**
-- **Chunk-based processing** for handling large datasets efficiently
-- **Retries with exponential backoff**
-- **Parallel execution**
-- **Throttling to control job execution speed**
-- **Persistence**, so jobs resume from where they left off in case of failure
-- **Hooks/callbacks for event handling**
-- **Scheduling support (interval and cron-based)**
+
+- **Chunk-based Processing**: Processes data in manageable chunks to optimize performance.
+- **Customizable Readers, Writers, and Processors**: Easily extendable components to suit various data sources and destinations.
+- **Retry Mechanism**: Configurable retry attempts for failed chunks with support for backoff strategies.
+- **Throttling**: Control the execution speed of batch jobs to prevent system overload.
+- **Parallel Execution**: Option to process chunks in parallel for improved performance.
+- **Job Scheduling**: Schedule jobs at fixed intervals or using cron expressions.
+- **Job Persistence**: Ensures jobs resume from the last processed chunk in case of interruptions.
+- **Callback Hooks**: Customize execution flow with lifecycle callbacks.
 
 ---
 
@@ -20,7 +21,7 @@ Clone or download the repository and place it in your ColdFusion application.
 
 ```sh
 # Clone the repository
-git clone https://github.com/your-repo/cf-batching.git
+git clone https://github.com/udayogra/coldfusion-batch.git
 ```
 
 ---
@@ -95,18 +96,59 @@ writeDump("Execution Time (seconds): " & executionTime);
   ```
   This means that retry delays will start at 1000ms.
 
+  ```cfscript
+  .setBackoffStrategy({
+    type: "exponential",
+    base: 1000,
+    factor: 2
+   })
+  ```
+  In this example, the first retry occurs after 1000ms, the second after 2000ms, the third after 4000ms, and so on.
+
 ---
 
 ## **4. Custom Readers and Writers**
 ### **Creating a Custom Reader**
-A reader must extend `batching.readers.AbstractReader` and implement `readChunk()`.
+A reader must extend `batching.readers.AbstractReader` and implement `readItem()` which should return a single entity.
 
 ```cfscript
 component extends="batching.readers.AbstractReader" {
-    public array function readChunk() {
-        var data = []; // Fetch data logic here
-        return data;
+    property numeric counter = 1;
+    function readItem() {
+        if (counter > 5) 
+	   return NULL;
+        return counter++;
     }
+
+      public any function getName() {
+        return "batching.readers.CustomReader";
+    }
+
+     public any function getParams() {
+       return {};
+    }
+}
+```
+
+### **Creating a Custom Processor**
+A processor must extend `batching.processors.AbstractProcessor` and implement `process()`.
+
+```cfscript
+// CustomProcessor.cfc
+component extends="batching.processors.AbstractProcessor" {
+    function process(item) {
+       // writelog(text="Processing items: #serializeJSON(item)#");
+        return item ;
+    }
+
+      public any function getName() {
+        return "batching.processors.CustomProcessor";
+    }
+
+     public any function getParams() {
+       return {};
+    }
+
 }
 ```
 
@@ -114,35 +156,62 @@ component extends="batching.readers.AbstractReader" {
 A writer must extend `batching.writers.AbstractWriter` and implement `write()`.
 
 ```cfscript
+// CustomWriter.cfc
 component extends="batching.writers.AbstractWriter" {
-    public void function write(array items) {
-        for (var item in items) {
-            // Logic to write data
-        }
+    function write(array items) {
+        writelog(text="Writing items: #serializeJSON(items)#");
+    }
+
+      public any function getName() {
+        return "batching.writers.CustomWriter";
+    }
+
+     public any function getParams() {
+       return {};
     }
 }
 ```
 
 ---
 
+
+
 ## **5. Inbuilt Readers & Writers**
-### **SpreadSheetFileReader (Built-in Reader)**
-Reads from an Excel file.
+## Built-in Reader: SpreadsheetFileReader
+
+The `SpreadsheetFileReader` allows reading structured data from an Excel spreadsheet (`.xlsx` format). It processes the file row by row and passes the data in chunks to be handled by the processor and writer.
+
+### Parameters:
+| Parameter  | Type   | Description |
+|------------|--------|-------------|
+| `filePath` | `string` | Absolute path to the spreadsheet file. |
+| `skipLines` (optional) | `numeric` | Number of initial rows to skip before reading (default: `0`). |
+| `maxLines` (optional) | `numeric` | Maximum number of rows to read (default: reads all). |
+
+### Example Usage:
 ```cfscript
-setReader("batching.readers.SpreadSheetFileReader", {
-    filePath: "C:/data.xlsx",
+job.setReader("batching.readers.SpreadSheetFileReader", {
+    filePath: "C:/Users/Administrator/Downloads/data.xlsx",
     skipLines: 1,
     maxLines: 100
-})
+});
 ```
+## Built-in Writer: TextFileWriter
 
-### **TextFileWriter (Built-in Writer)**
-Writes data to a text file.
+The `TextFileWriter` is a built-in writer that writes structured data to a plain text file. Each record is written as a new line, with fields separated by a configurable delimiter.
+
+### Parameters:
+| Parameter  | Type   | Description |
+|------------|--------|-------------|
+| `filePath` | `string` | Absolute path to the output text file. |
+| `delimiter` (optional) | `string` | Character used to separate fields in each line (default: `|`). |
+
+### Example Usage:
 ```cfscript
-setWriter("batching.writers.TextFileWriter", {
+job.setWriter("batching.writers.TextFileWriter", {
     filePath: "C:/output.txt",
-    delimiter: ','
-})
+    delimiter: ","
+});
 ```
 
 ---

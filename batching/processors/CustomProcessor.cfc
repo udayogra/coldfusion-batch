@@ -13,7 +13,4 @@ component extends="batching.processors.AbstractProcessor" {
        return {};
     }
 
-    function inti(){
-
-    }
 }

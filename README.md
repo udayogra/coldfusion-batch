@@ -40,16 +40,9 @@ hooks = {
 };
 
 job = new batching.BatchJob("SampleJob")
-    .setReader("batching.readers.SpreadSheetFileReader", {
-        filePath: "C:\\Users\\Administrator\\Downloads\\1mb.xlsx",
-        skipLines: 0,
-        maxLines: 16
-    })
+    .setReader("batching.readers.CustomReader")
     .setProcessor("batching.processors.CustomProcessor", {})
-    .setWriter("batching.writers.TextFileWriter", {
-        filePath: "c:/abc.txt",
-        delimiter: '|'
-    })
+    .setWriter("batching.writers.CustomWriter")
     .setChunkSize(10)
     .setRetries(2)
     .setParallel(true)
@@ -266,7 +259,11 @@ If a server crashes or stops mid-job, execution resumes from the last processed 
 manager = new batching.BatchJobManager();
 
 job = new batching.BatchJob("SampleJob")
-    .setReader("batching.readers.SpreadSheetFileReader", { filePath: "C:/data.xlsx" })
+    .setReader("batching.readers.SpreadSheetFileReader", {
+        filePath: "C:\\Users\\Administrator\\Downloads\\1mb.xlsx",
+        skipLines: 0,
+        maxLines: 16
+    })
     .setProcessor("batching.processors.CustomProcessor", {})
     .setWriter("batching.writers.TextFileWriter", { filePath: "C:/output.txt" })
     .setChunkSize(10)
